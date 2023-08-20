@@ -1,0 +1,9 @@
+# Deployment configuration
+[SAM]
+profile = "admin-account"
+regions = ["eu-north-1", "us-east-1"]
+
+stack-name = "INFRA-detect-log-buckets"
+s3-prefix = "INFRA-detect-log-buckets"
+capabilities = "CAPABILITY_IAM"
+

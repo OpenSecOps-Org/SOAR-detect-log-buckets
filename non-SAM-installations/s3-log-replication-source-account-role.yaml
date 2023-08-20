@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  Creates the IAM Role required for S3 log bucket replication to the Log Archive
+  account. Deploy as a StackSet in your main region.
+
+
+Parameters:
+
+  SourceAccountRoleName:
+    Type: String
+    Description: The name of the role in the source accounts allowed to perform
+      the replication operations.
+    Default: 's3-log-replication-source-account-role'
+
+  CloudFrontLogsBucketName:
+    Type: String
+    Description: The name of the CloudFront bucket in the Log Archive
+    Default: 'cloudfront-logs-779511826399-eu-north-1'
+
+  LoadBalancerLogsBucketName:
+    Type: String
+    Description: The name of the CloudFront bucket in the Log Archive
+    Default: 'load-balancer-logs-779511826399-eu-north-1'
+
+
+Resources:
+
+  S3LogReplicationSourceAccountRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref SourceAccountRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - 
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: S3LogReplicationSourceAccountRolePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - 
+                Effect: Allow
+                Action:
+                  - s3:GetObjectVersionForReplication
+                  - s3:GetObjectVersionAcl
+                  - s3:GetObjectVersionTagging
+                Resource: "*"
+              - 
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetReplicationConfiguration
+                Resource: "*"
+              - 
+                Effect: Allow
+                Action:
+                  - s3:ReplicateObject
+                  - s3:ReplicateDelete
+                  - s3:ReplicateTags
+                Resource: 
+                  - !Sub "arn:aws:s3:::${CloudFrontLogsBucketName}/*"
+                  - !Sub "arn:aws:s3:::${LoadBalancerLogsBucketName}/*"
