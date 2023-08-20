@@ -1,0 +1,124 @@
+Comment: A state machine that monitors buckets for logs, setting up replication when found.
+StartAt: Setup Counter
+States:
+
+    Setup Counter:
+        Type: Pass
+        Result: 200
+        ResultPath: $.counter
+        Next: Get Latest Files
+
+    Get Latest Files:
+        Type: Task
+        Resource: '${GetLatestFilesFunctionArn}'
+        Parameters:
+            region.$: $.region
+            account_id.$: $.account_id
+            bucket_name.$: $.bucket_name
+        ResultPath: $.files
+        Retry:
+            -
+                ErrorEquals:
+                    - Lambda.ServiceException
+                    - Lambda.AWSLambdaException
+                    - Lambda.SdkClientException
+        Catch:
+            - 
+                ErrorEquals:
+                    - States.ALL
+                Next: Not A Log Bucket
+        Next: Analyse and Decrement
+
+    Analyse and Decrement:
+        Type: Task
+        Resource: '${AnalyseAndDecrementFunctionArn}'
+        Next: Verdict?
+
+    Verdict?:
+        Type: Choice
+        Choices:
+            - 
+                Variable: $.counter
+                NumericLessThan: 0
+                Next: Not A Log Bucket
+            - 
+                Variable: $.verdict
+                StringEquals: undecided
+                Next: Undecided, Wait 15 Minutes
+            - 
+                Variable: $.verdict
+                StringEquals: unusable
+                Next: Not A Log Bucket
+            
+        Default: Is A Log Bucket
+
+    Undecided, Wait 15 Minutes:
+        Type: Wait
+        Seconds: 900
+        Next: Get Latest Files
+
+    Not A Log Bucket:
+        Type: Succeed
+
+    Is A Log Bucket:
+        Type: Pass
+        Next: Activate Replication
+
+    Activate Replication:
+        Type: Task
+        Resource: '${ActivateReplicationFunctionArn}'
+        Parameters:
+            region.$: $.region
+            account_id.$: $.account_id
+            bucket_name.$: $.bucket_name
+            verdict.$: $.verdict
+        ResultPath: null
+        Retry:
+            -
+                ErrorEquals:
+                    - Lambda.ServiceException
+                    - Lambda.AWSLambdaException
+                    - Lambda.SdkClientException
+        Catch:
+            - 
+                ErrorEquals:
+                    - States.ALL
+                Next: Replication Activation Failed
+        Next: Create Incident
+
+    Create Incident:
+        Type: Task
+        Resource: '${CreateIncidentFunctionArn}'
+        Parameters:
+            region.$: $.region
+            account_id.$: $.account_id
+            bucket_name.$: $.bucket_name
+            verdict.$: $.verdict
+        ResultPath: null
+        Retry:
+            -
+                ErrorEquals:
+                    - Lambda.ServiceException
+                    - Lambda.AWSLambdaException
+                    - Lambda.SdkClientException
+        Catch:
+            - 
+                ErrorEquals:
+                    - States.ALL
+                Next: Incident Creation Failed
+        Next: Success
+
+    Success:
+        Type: Succeed
+
+    Replication Activation Failed:
+        Type: Fail
+
+    Incident Creation Failed:
+        Type: Fail
+
+    
+
+
+
+    
