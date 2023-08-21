@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  Send all S3 CreateBucket and DeleteBucket events to a custom event bus in the organisation account
+  so we can detect when a bucket contains logs and replicate it to the corresponding Log Archive bucket.
+
+
+Parameters:
+
+  OrganizationAccountNumber:
+    Type: String
+    Description: The Org account number
+    Default: "111111111111"
+
+  CustomEventBusName:
+    Type: String
+    Description: The name of the custom event bus
+    Default: security-hub-automation
+
+
+Resources:
+
+  S3DetectBucketLifecycleRule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Description: >
+        Send all S3 CreateBucket and DeleteBucket events to a custom event bus in the organisation account
+        so we can detect when a bucket contains logs and replicate it to the corresponding Log Archive bucket.
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource: 
+            - s3.amazonaws.com
+          eventName: 
+            - CreateBucket
+            - DeleteBucket
+      Targets:
+        - Id: S3BucketLifecycleToOrgAccount
+          Arn: !Sub "arn:aws:events:${AWS::Region}:${OrganizationAccountNumber}:event-bus/${CustomEventBusName}"
+          RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/EventBridgeInvokeEventBusRole"

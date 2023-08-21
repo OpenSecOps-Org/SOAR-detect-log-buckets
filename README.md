@@ -8,23 +8,23 @@ The implementation is based on all member accounts passing the CreateBucket and
 DeleteBucket events to the custom event bus `security-hub-automation` in the 
 organisation account.
 
-To make the accounts forward this event:
+The `./deploy` command does the following:
 
-1. Deploy `log-archive-buckets.yaml` in the Log Archive account. This creates the
+1. It deploys `log-archive-buckets.yaml` in the Log Archive account. This creates the
    buckets for aggregation of CloudFront and load balancer logs, with the 
    appropriate cross-account configuration.
 
-2. Deploy `s3-log-replication-source-account-role.yaml` to the org account in your
+2. It deploys `s3-log-replication-source-account-role.yaml` to the org account in your
    main region, then as a StackSet to all accounts, likewise in your main region only.
    This creates the IAM Role replication will use. It has permissions to replicate
    to the aggregation buckets in the Log Archive account.
 
-3. Deploy `detect-bucket-lifecycle.yaml` to the org account in each supported region, 
+3. It deploys `detect-bucket-lifecycle.yaml` to the org account in each supported region, 
    then as a StackSet to all accounts and all supported regions. This sets up
    an EventBridge rule in each account to transfer S3 bucket lifecycle events to the
    Organisation account from which detection will take place.
 
-3. Then deploy this SAM project in the organisation account, in each supported 
+3. It then deploys this SAM project in the organisation account, in each supported 
    region. This installs everything necessary to detect S3 log buckets and set up
    replication as appropriate.
 
@@ -39,8 +39,14 @@ files to be put in the bucket.
 
 ## Deployment
 
-First log in to your AWS organisation using SSO. Obtain AWSAdministratorAccess for the AWS Organizations 
-admin account. Paste the credentials into the terminal. Then type:
+First log in to your AWS organisation using SSO and a profile that gives you
+AWSAdministratorAccess to the AWS Organizations admin account.
+
+```console
+aws sso login --profile <profile-name>
+```
+
+Then type:
 
 ```console
 ./deploy

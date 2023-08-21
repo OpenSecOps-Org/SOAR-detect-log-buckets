@@ -24,7 +24,7 @@ Parameters:
   LogArchiveAccountId:
     Type: String
     Description: The ID of the Log Archive account
-    Default: '938898731677'
+    Default: '222222222222'
   
   SourceAccountRoleName:
     Type: String
@@ -35,12 +35,12 @@ Parameters:
   CloudFrontLogsBucketName:
     Type: String
     Description: The name of the CloudFront bucket in the Log Archive
-    Default: 'cloudfront-logs-938898731677-eu-north-1'
+    Default: 'cloudfront-logs-222222222222-eu-north-1'
 
   LoadBalancerLogsBucketName:
     Type: String
     Description: The name of the CloudFront bucket in the Log Archive
-    Default: 'load-balancer-logs-938898731677-eu-north-1'
+    Default: 'load-balancer-logs-222222222222-eu-north-1'
 
 Globals:
   Function:

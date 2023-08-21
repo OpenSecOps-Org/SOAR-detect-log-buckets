@@ -1,9 +1,34 @@
 # Deployment configuration
-[SAM]
-profile = "admin-account"
-regions = ["eu-north-1", "us-east-1"]
 
-stack-name = "INFRA-detect-log-buckets"
-s3-prefix = "INFRA-detect-log-buckets"
-capabilities = "CAPABILITY_IAM"
+repo-name    = "SOAR-detect-log-buckets"
+part-of      = 'soar'
+
+
+[[pre-SAM-CloudFormation]]
+name         = "INFRA-log-archive-buckets"
+template     = 'cloudformation/log-archive-buckets.yaml'
+account      = '{log-archive-account}'
+regions      = '{main-region}'
+
+[[pre-SAM-CloudFormation]]
+name         = "INFRA-s3-log-replication-source-account-role"
+template     = 'cloudformation/s3-log-replication-source-account-role.yaml'
+account      = 'ALL'
+regions      = '{main-region}'
+capabilities = 'CAPABILITY_NAMED_IAM'
+
+[[pre-SAM-CloudFormation]]
+name         = "INFRA-detect-bucket-lifecycle"    # Mistakenly deployed as INFRA-filedetect-bucket-lifecycle
+template     = 'cloudformation/detect-bucket-lifecycle.yaml'
+account      = 'ALL'
+regions      = '{all-regions}'
+
+
+[SAM]
+profile      = "admin-account"
+regions      = '{all-regions}'
+stack-name   = "INFRA-detect-log-buckets"
+s3-prefix    = "INFRA-detect-log-buckets"
+
+
 
