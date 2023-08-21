@@ -32,7 +32,7 @@ END = "\033[0m"
 BOLD = "\033[1m"
 
 def printc(color, string, **kwargs):
-    print(f"{color}{string}{END}", **kwargs)
+    print(f"{color}{string}\033[K{END}", **kwargs)
 
 
 def load_toml(toml_file):
@@ -150,8 +150,6 @@ def process_sam(sam, repo_name, params):
 
     # Get the SAM parameter overrides
     sam_parameter_overrides = parameters_to_sam_string(params, repo_name)
-    print()
-    print(sam_parameter_overrides)
 
     try:
         printc(LIGHT_BLUE, "Executing 'git pull'...")
@@ -305,6 +303,8 @@ def update_stack(stack_name, template_body, parameters, capabilities, account_id
     Returns:
     - response (dict): Response from the CloudFormation API.
     """
+
+    printc(YELLOW, f"Updating stack {stack_name} in AWS account {account_id} in region {region}...")
     
     # Get the CloudFormation client using the get_client function
     cf_client = get_client('cloudformation', account_id, region, role)
@@ -329,7 +329,7 @@ def update_stack(stack_name, template_body, parameters, capabilities, account_id
         return True
     except botocore.exceptions.ClientError as e:
         if "No updates are to be performed" in str(e):
-            printc(GREEN, "Infrastructure will not change. Skipping update.")
+            printc(GREEN, "No changes.")
             return False
         else:
             raise e
@@ -351,7 +351,9 @@ def create_stack(stack_name, template_body, parameters, capabilities, account_id
     Returns:
     - response (dict): Response from the CloudFormation API.
     """
-    
+
+    printc(YELLOW, f"Creating stack {stack_name} in AWS account {account_id} in region {region}...")
+
     # Get the CloudFormation client using the get_client function
     cf_client = get_client('cloudformation', account_id, region, role)
 
@@ -375,13 +377,13 @@ def create_stack(stack_name, template_body, parameters, capabilities, account_id
         return True
     except botocore.exceptions.ClientError as e:
         if "No updates are to be performed" in str(e):
-            printc(GREEN, "Infrastructure will not change. Skipping update.")
+            printc(GREEN, "No changes.")
             return False
         else:
             raise e
         
 
-def update_stack_set(stack_set_name, template_body, parameters, capabilities, account_id, region, role):
+def update_stack_set(stack_set_name, template_body, parameters, capabilities, regions, account_id, region, role):
     """
     Update an existing AWS CloudFormation StackSet using the provided template and parameters.
     
@@ -397,7 +399,9 @@ def update_stack_set(stack_set_name, template_body, parameters, capabilities, ac
     Returns:
     - response (dict): Response from the CloudFormation API.
     """
-    
+
+    printc(YELLOW, f"Updating stack set {stack_set_name} in AWS account {account_id} in region {region}...")
+
     # Get the CloudFormation client using the get_client function
     cf_client = get_client('cloudformation', account_id, region, role)
 
@@ -417,17 +421,25 @@ def update_stack_set(stack_set_name, template_body, parameters, capabilities, ac
             Parameters=parameters,
             Capabilities=[capabilities],
             Tags=tags,
+            OperationPreferences={
+                'RegionConcurrencyType': 'PARALLEL',
+            #    'RegionOrder': regions,
+                'FailureTolerancePercentage': 0,
+                'MaxConcurrentPercentage': 100
+            },
         )
         return True
     except botocore.exceptions.ClientError as e:
         if "No updates are to be performed" in str(e):
-            print("StackSet update: No changes are needed.")
+            printc(YELLOW, "StackSet update: No changes are needed.")
             return False
         else:
             raise e
 
 
 def create_stack_set(stack_set_name, template_body, parameters, capabilities, root_ou, deployment_regions, account_id, region, role):
+    printc(YELLOW, f"Creating stack set {stack_set_name} in AWS account {account_id} in region {region}...")
+
     cf_client = get_client('cloudformation', account_id, region, role)
 
     tags = [
@@ -449,27 +461,29 @@ def create_stack_set(stack_set_name, template_body, parameters, capabilities, ro
                 'RetainStacksOnAccountRemoval': False
             },
             Tags=tags,
+            OperationPreferences={
+                'RegionConcurrencyType': 'PARALLEL',
+#                'RegionOrder': deployment_regions,
+                'FailureTolerancePercentage': 0,
+                'MaxConcurrentPercentage': 100
+            },
         )
 
-        monitor_stack_until_complete(stack_set_name, account_id, region, role)
+        monitor_stackset_until_complete(stack_set_name, account_id, region, role)
 
         cf_client.create_stack_instances(
             StackSetName=stack_set_name,
             DeploymentTargets={
                 'OrganizationalUnitIds': [root_ou],
             },
-            Regions=[deployment_regions],
-            OperationPreferences={
-                'FailureTolerancePercentage': 0,
-                'MaxConcurrentPercentage': 100
-            },
+            Regions=deployment_regions,
         )
-        monitor_stack_until_complete(stack_set_name, account_id, region, role)
+        monitor_stackset_stacks_until_complete(stack_set_name, account_id, region, role)
 
         return response
     except botocore.exceptions.ClientError as e:
         if "AlreadyExistsException" in str(e):
-            print("StackSet already exists.")
+            printc(RED, "StackSet already exists.")
         else:
             raise e
 
@@ -488,8 +502,18 @@ def monitor_stack_until_complete(stack_name, account_id, region, role):
     # Get the CloudFormation client using the get_client function
     cf_client = get_client('cloudformation', account_id, region, role)
     
-    # Define terminal states for CloudFormation stacks
-    terminal_states = ["CREATE_COMPLETE", "ROLLBACK_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "DELETE_COMPLETE"]
+    # Define terminal states for CloudFormation stacks and stack sets
+    terminal_states = ["CREATE_COMPLETE", "ROLLBACK_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "DELETE_COMPLETE", "CURRENT", "ACTIVE"]
+
+    # Get the current stack status
+    stack = cf_client.describe_stacks(StackName=stack_name)
+    stack_status = stack['Stacks'][0]['StackStatus']
+    
+    # Return immediately if the stack is already in a terminal state
+    if stack_status in terminal_states:
+        return
+
+    printc(YELLOW, "Waiting for stack or stack set to complete...")
     
     while True:
         try:
@@ -499,15 +523,15 @@ def monitor_stack_until_complete(stack_name, account_id, region, role):
             
             # Print the stack status with the appropriate color and reset the color afterward
             if "ROLLBACK" in stack_status or "DELETE" in stack_status:
-                print(f"{RED}\rStack Status: {stack_status}          {END}", end="")
+                printc(RED, f"Stack Status: {stack_status}", end="")
             elif "CREATE_COMPLETE" in stack_status or "UPDATE_COMPLETE" in stack_status:
-                print(f"{GREEN}\rStack Status: {stack_status}          {END}", end="")
+                printc(GREEN, f"Stack Status: {stack_status}", end="")
             else:
-                print(f"{LIGHT_BLUE}\rStack Status: {stack_status}          {END}", end="")
+                printc(YELLOW, f"Stack Status: {stack_status}", end="")
             
             # Exit loop if the stack is in a terminal state
             if stack_status in terminal_states:
-                print()  # Move to the next line after final state is reached
+                printc(YELLOW, '')  # Move to the next line after final state is reached
                 time.sleep(5)
                 break
             
@@ -515,13 +539,143 @@ def monitor_stack_until_complete(stack_name, account_id, region, role):
             time.sleep(1)  # Shorter interval for more frequent checks
         except botocore.exceptions.WaiterError as ex:
             if ex.last_response.get('Error', {}).get('Code') == 'ThrottlingException':
-                print("API rate limit exceeded. Retrying in 5 seconds...")
+                printc(RED, "API rate limit exceeded. Retrying in 5 seconds...")
                 time.sleep(5)
             else:
                 raise
         except botocore.exceptions.OperationInProgressException as op_in_prog_ex:
-            print(f"Another operation is in progress: {op_in_prog_ex}")
-            print("Retrying in 30 seconds...")
+            printc(RED, f"Another operation is in progress: {op_in_prog_ex}")
+            printc(RED, "Retrying in 30 seconds...")
+            time.sleep(30)
+
+
+def monitor_stackset_until_complete(stackset_name, account_id, region, role):
+    """
+    Polls the specified StackSet until it reaches a terminal state.
+    
+    Parameters:
+    - stackset_name (str): Name of the StackSet to monitor.
+    - account_id (str): AWS Account ID to assume the role from.
+    - region (str): AWS Region where the StackSet resides.
+    - role (str): IAM Role to assume for cross-account access.
+    """
+    
+    # Get the CloudFormation client using the get_client function
+    cf_client = get_client('cloudformation', account_id, region, role)
+    
+    # Define terminal states for CloudFormation StackSets
+    terminal_states = ["CREATE_COMPLETE", "ROLLBACK_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "DELETE_COMPLETE", "CURRENT", "ACTIVE"]
+
+    # Get the current StackSet status
+    stackset = cf_client.describe_stack_set(StackSetName=stackset_name)
+    stackset_status = stackset['StackSet']['Status']
+    
+    # Return immediately if the StackSet is already in a terminal state
+    if stackset_status in terminal_states:
+        return
+
+    printc(YELLOW, "Waiting for StackSet deployment to complete...")
+
+    while True:
+        try:
+            # Get the current StackSet status
+            stackset = cf_client.describe_stack_set(StackSetName=stackset_name)
+            stackset_status = stackset['StackSet']['Status']
+            
+            # Print the StackSet status with the appropriate color and reset the color afterward
+            if "ROLLBACK" in stackset_status or "DELETE" in stackset_status:
+                printc(RED, f"StackSet Status: {stackset_status}", end="")
+            elif "CREATE_COMPLETE" in stackset_status or "UPDATE_COMPLETE" in stackset_status:
+                printc(GREEN, f"StackSet Status: {stackset_status}", end="")
+            else:
+                printc(YELLOW, f"StackSet Status: {stackset_status}", end="")
+            
+            # Exit loop if the StackSet is in a terminal state
+            if stackset_status in terminal_states:
+                printc(YELLOW, '')  # Move to the next line after final state is reached
+                time.sleep(5)
+                break
+            
+            # Sleep for a shorter interval before checking again
+            time.sleep(1)  # Shorter interval for more frequent checks
+        
+        except botocore.exceptions.WaiterError as ex:
+            if ex.last_response.get('Error', {}).get('Code') == 'ThrottlingException':
+                printc(RED, "API rate limit exceeded. Retrying in 5 seconds...")
+                time.sleep(5)
+            else:
+                raise
+        except botocore.exceptions.BotoCoreError as error:
+            printc(RED, f"An error occurred: {error}")
+            printc(RED, "Retrying in 30 seconds...")
+            time.sleep(30)
+
+
+def monitor_stackset_stacks_until_complete(stackset_name, account_id, region, role):
+    """
+    Polls the specified StackSet's stacks until they reach a terminal state.
+    
+    Parameters:
+    - stackset_name (str): Name of the StackSet to monitor.
+    - account_id (str): AWS Account ID to assume the role from.
+    - region (str): AWS Region where the StackSet resides.
+    - role (str): IAM Role to assume for cross-account access.
+    """
+    
+    # Get the CloudFormation client using the get_client function
+    cf_client = get_client('cloudformation', account_id, region, role)
+    
+    # Define terminal states for CloudFormation stacks
+    terminal_states = ["CREATE_COMPLETE", "ROLLBACK_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "DELETE_COMPLETE", "CURRENT"]
+
+    # Get the status of all stacks deployed by the StackSet
+    stack_instances = cf_client.list_stack_instances(StackSetName=stackset_name)
+    stack_statuses = [instance['Status'] for instance in stack_instances['Summaries']]
+    
+    # Return immediately if all stacks are already in a terminal state
+    if all(status in terminal_states for status in stack_statuses):
+        return
+
+    printc(YELLOW, "Waiting for stack set's deployment of its stacks to complete...")
+
+    while True:
+        try:
+            # Get the status of all stacks deployed by the StackSet
+            stack_instances = cf_client.list_stack_instances(StackSetName=stackset_name)
+            stack_statuses = [instance['Status'] for instance in stack_instances['Summaries']]
+            
+            # Print the status of each stack instance
+            for instance in stack_instances['Summaries']:
+                stack_instance_identifier = f"{instance['Account']}: {instance['Region']:<15}"
+                stack_status = instance['Status']
+                if stack_status in terminal_states:
+                    printc(GREEN, f"Stack: {stack_instance_identifier}, Status: {stack_status}")
+                else:
+                    printc(YELLOW, f"Stack: {stack_instance_identifier}, Status: {stack_status}")
+            
+            # Move the cursor to the beginning of the line
+            sys.stdout.write("\033[F" * (len(stack_instances['Summaries'])))
+            
+            # Check if any stack is not in a terminal state
+            if any(status not in terminal_states for status in stack_statuses):
+                # Sleep for a shorter interval before checking again
+                time.sleep(1)  # Shorter interval for more frequent checks
+                continue  # Continue monitoring if any stack is still in progress
+            
+            # All stacks are in a terminal state, exit the loop
+            printc(YELLOW, '')  # Move to the next line after all stacks are complete
+            time.sleep(5)
+            break
+        
+        except botocore.exceptions.WaiterError as ex:
+            if ex.last_response.get('Error', {}).get('Code') == 'ThrottlingException':
+                printc(RED, "API rate limit exceeded. Retrying in 5 seconds...")
+                time.sleep(5)
+            else:
+                raise
+        except botocore.exceptions.BotoCoreError as error:
+            printc(RED, f"An error occurred: {error}")
+            printc(RED, "Retrying in 30 seconds...")
             time.sleep(30)
 
 
@@ -543,7 +697,10 @@ def process_cloudformation(jobs, repo_name, params, cross_account_role):
     root_ou = params['root-ou']
     main_region = params['main-region']
 
+    index = 0
     for job in jobs:
+        index += 1
+
         stack_name = job.get('name')
         template_path = job.get('template')
         account = dereference(job.get('account'), params)
@@ -553,21 +710,15 @@ def process_cloudformation(jobs, repo_name, params, cross_account_role):
         if isinstance(regions, str):
             regions = [regions]
 
-        print()
-
+        printc(YELLOW, '')
         stack_set = False
         if account == 'ALL':
             stack_set = True
             account = admin_account_id
-            printc(YELLOW, "STACK SET --------------------------------")
+            printc(LIGHT_BLUE, f"{index}. {stack_name} (StackSet):")
         else:
-            printc(YELLOW, "STACK ------------------------------------")
-
-        printc(YELLOW, stack_name)
-        printc(YELLOW, template_path)
-        printc(YELLOW, account)
-        printc(YELLOW, regions)
-        printc(YELLOW, capabilities)
+            printc(LIGHT_BLUE, f"{index}. {stack_name} (Stack):")
+        printc(YELLOW, '')
 
         template_str = read_cloudformation_template(template_path)
         stack_parameters = parameters_to_cloudformation_json(params, repo_name, stack_name)
@@ -576,14 +727,14 @@ def process_cloudformation(jobs, repo_name, params, cross_account_role):
             for region in regions:
                 exists = does_stack_exist(stack_name, account, region, cross_account_role)
                 if exists:
-                    printc(YELLOW, f"- Stack exists in {account} and {region}")
+                    # printc(YELLOW, f"- Stack exists in {account} and {region}")
                     monitor_stack_until_complete(stack_name, account, region, cross_account_role)
                     changing = update_stack(stack_name, template_str, stack_parameters, capabilities, account, region, cross_account_role)
                     if changing:
                         time.sleep(1)
                         monitor_stack_until_complete(stack_name, account, region, cross_account_role)
                 else:
-                    printc(YELLOW, f"- Stack does not exist in {account} and {region}")
+                    # printc(YELLOW, f"- Stack does not exist in {account} and {region}")
                     changing = create_stack(stack_name, template_str, stack_parameters, capabilities, account, region, cross_account_role)
                     if changing:
                         time.sleep(1)
@@ -592,28 +743,30 @@ def process_cloudformation(jobs, repo_name, params, cross_account_role):
         else:
             exists = does_stackset_exist(stack_name, account, main_region, cross_account_role)
             if exists:
-                printc(YELLOW, f"- StackSet exists in {account} and {main_region}")
-                monitor_stack_until_complete(stack_name, account, main_region, cross_account_role)
-                changing = update_stack_set(stack_name, template_str, stack_parameters, capabilities, account, main_region, cross_account_role)
+                # printc(YELLOW, f"- StackSet exists in {account} and {main_region}")
+                monitor_stackset_until_complete(stack_name, account, main_region, cross_account_role)
+                monitor_stackset_stacks_until_complete(stack_name, account, main_region, cross_account_role)
+                changing = update_stack_set(stack_name, template_str, stack_parameters, capabilities, regions, account, main_region, cross_account_role)
                 if changing:
                     time.sleep(1)
                     monitor_stack_until_complete(stack_name, account, main_region, cross_account_role)
             else:
-                printc(YELLOW, f"- StackSet does not exist in {account} and {main_region}")
+                # printc(YELLOW, f"- StackSet does not exist in {account} and {main_region}")
                 create_stack_set(stack_name, template_str, stack_parameters, capabilities, root_ou, regions, account, main_region, cross_account_role)
+                monitor_stackset_stacks_until_complete(stack_name, account, main_region, cross_account_role)
 
             # Check the Stack(s) in the admin account(s) as well
             for region in regions:
                 exists = does_stack_exist(stack_name, admin_account_id, region, cross_account_role)
                 if exists:
-                    printc(YELLOW, f"- Also deployed as a single Stack in the AWS Organization admin account in {region}")
+                    # printc(YELLOW, f"- Also deployed as a single Stack in the AWS Organization admin account in {region}")
                     monitor_stack_until_complete(stack_name, account, region, cross_account_role)
                     changing = update_stack(stack_name, template_str, stack_parameters, capabilities, account, region, cross_account_role)
                     if changing:
                         time.sleep(1)
                         monitor_stack_until_complete(stack_name, account, region, cross_account_role)
                 else:
-                    printc(YELLOW, f"- Not deployed as a single Stack in the AWS Organization admin account in {region}")
+                    # printc(YELLOW, f"- Not deployed as a single Stack in the AWS Organization admin account in {region}")
                     changing = create_stack(stack_name, template_str, stack_parameters, capabilities, account, region, cross_account_role)
                     if changing:
                         time.sleep(1)
