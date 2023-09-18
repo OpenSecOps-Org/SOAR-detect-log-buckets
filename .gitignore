@@ -4,7 +4,9 @@
 
 samconfig*
 !samconfig*.example
-config-accounts.toml
+accounts.toml
+parameters.toml
+
 
 # Created by https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode
 

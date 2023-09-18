@@ -5,7 +5,7 @@ from CloudFront or AWS Elastic Load Balancing. If so, we replicate the contents
 of such buckets to the Log Archive account.
 
 The implementation is based on all member accounts passing the CreateBucket and
-DeleteBucket events to the custom event bus `security-hub-automation` in the 
+DeleteBucket events to the custom event bus `SOAR-events` in the 
 organisation account.
 
 The `./deploy` command does the following:
@@ -39,11 +39,12 @@ files to be put in the bucket.
 
 ## Deployment
 
-First log in to your AWS organisation using SSO and a profile that gives you
-AWSAdministratorAccess to the AWS Organizations admin account.
+First make sure that your SSO setup is configured with a default profile giving you AWSAdministratorAccess
+to your AWS Organizations administrative account. This is necessary as the AWS cross-account role used 
+during deployment only can be assumed from that account.
 
 ```console
-aws sso login --profile <profile-name>
+aws sso login
 ```
 
 Then type:

@@ -19,7 +19,7 @@ Parameters:
   CustomEventBusName:
     Type: String
     Description: The custom event bus to listen to for the events
-    Default: security-hub-automation
+    Default: SOAR-events
 
   LogArchiveAccountId:
     Type: String
@@ -46,7 +46,7 @@ Globals:
   Function:
     CodeUri: functions
     Timeout: 30
-    Runtime: python3.9
+    Runtime: python3.11
 
 Resources:
   #-------------------------------------------------------------------------------

@@ -18,17 +18,16 @@ regions      = '{main-region}'
 capabilities = 'CAPABILITY_NAMED_IAM'
 
 [[pre-SAM-CloudFormation]]
-name         = "INFRA-detect-bucket-lifecycle"    # Mistakenly deployed as INFRA-filedetect-bucket-lifecycle
+name         = "INFRA-detect-bucket-lifecycle"
 template     = 'cloudformation/detect-bucket-lifecycle.yaml'
 account      = 'ALL'
 regions      = '{all-regions}'
 
 
 [SAM]
+stack-name   = "INFRA-detect-log-buckets"
 profile      = "admin-account"
 regions      = '{all-regions}'
-stack-name   = "INFRA-detect-log-buckets"
-s3-prefix    = "INFRA-detect-log-buckets"
 
 
 

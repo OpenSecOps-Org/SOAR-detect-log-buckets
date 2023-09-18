@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.1.2
+    * `--dry-run` and `--verbose` added to `deploy`.
+
 ## v1.1.1
 * Better formatting and colourisation.
 
