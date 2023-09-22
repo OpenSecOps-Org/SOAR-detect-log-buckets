@@ -1,5 +1,9 @@
 # Change Log
 
+## v1.1.3
+    * Open-source credits and URLs
+    * Fixed installer initial stackset creation.
+
 ## v1.1.2
     * `--dry-run` and `--verbose` added to `deploy`.
 
