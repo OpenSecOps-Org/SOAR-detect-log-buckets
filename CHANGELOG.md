@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.1.4
+    * Refreshed scripts.
+
 ## v1.1.3
     * Open-source credits and URLs
     * Fixed installer initial stackset creation.
