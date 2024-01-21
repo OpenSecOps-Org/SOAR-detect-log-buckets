@@ -60,7 +60,7 @@ def lambda_handler(data, _context):
                     'Destination': {
                         'Account': LOG_ARCHIVE_ACCOUNT_iD,
                         'Bucket': f'arn:aws:s3:::{destination_bucket_name}',
-                        'StorageClass': 'STANDARD_IA',
+                        'StorageClass': 'STANDARD',
                         'AccessControlTranslation': {
                             'Owner': 'Destination'
                         },

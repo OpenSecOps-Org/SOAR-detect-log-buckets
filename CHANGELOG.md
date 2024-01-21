@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.1.5
+    * Switched to storage class STANDARD rather than STANDARDIA, for auto-construction of storage dashboards.
+
 ## v1.1.4
     * Refreshed scripts.
 
