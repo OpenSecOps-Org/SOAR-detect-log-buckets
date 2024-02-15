@@ -82,10 +82,11 @@ Resources:
               Action:
                 - sts:AssumeRole
               Resource: !Sub 'arn:aws:iam::*:role/${CrossAccountRole}'
-            - Sid: StartStepFunction
+            - Sid: StepFunctionPermissions
               Effect: Allow
               Action:
                 - states:StartExecution
+                - states:ListExecutions
               Resource:
                 - !Ref MonitorBucketForLogs
       Environment:

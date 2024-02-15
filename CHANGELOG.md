@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.2.0
+    * Now handling the edge case of buckets being created, deleted, and then created again within 90 days.
+
 ## v1.1.5
     * Switched to storage class STANDARD rather than STANDARDIA, for auto-construction of storage dashboards.
 
