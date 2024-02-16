@@ -65,12 +65,16 @@ def is_duplicate_execution(bucket_name):
     
     for page in page_iterator:
         for execution in page['executions']:
-            try:
-                execution_input = json.loads(execution['input'])
-                if execution_input.get('bucket_name') == bucket_name:
-                    return True
-            except json.JSONDecodeError:
-                continue
+            execution_arn = execution['executionArn']
+            # Use describe_execution to get the input data
+            execution_details = CLIENT.describe_execution(executionArn=execution_arn)
+            if 'input' in execution_details:
+                try:
+                    execution_input = json.loads(execution_details['input'])
+                    if execution_input.get('bucket_name') == bucket_name:
+                        return True
+                except json.JSONDecodeError:
+                    continue
     return False
 
     

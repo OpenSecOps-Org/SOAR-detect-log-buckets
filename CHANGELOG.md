@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.2.1
+    * Using describe_execution to get the input.
+
 ## v1.2.0
     * Now handling the edge case of buckets being created, deleted, and then created again within 90 days.
 

@@ -87,6 +87,7 @@ Resources:
               Action:
                 - states:StartExecution
                 - states:ListExecutions
+                - states:DescribeExecution
               Resource:
                 - !Ref MonitorBucketForLogs
       Environment:
