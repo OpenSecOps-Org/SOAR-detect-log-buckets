@@ -1,5 +1,11 @@
 # Change Log
 
+## v1.2.3
+    * Changed incident level to MEDIUM for the lifecycle lambda.
+
+## v1.2.2
+    * Fixed DescribeExecution permissions.
+
 ## v1.2.1
     * Using describe_execution to get the input.
 

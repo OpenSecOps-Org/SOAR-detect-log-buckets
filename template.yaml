@@ -77,19 +77,26 @@ Resources:
                   - DeleteBucket
       Policies:
         - Statement:
-            - Sid: AssumeTheRole
+            - 
+              Sid: AssumeTheRole
               Effect: Allow
               Action:
                 - sts:AssumeRole
               Resource: !Sub 'arn:aws:iam::*:role/${CrossAccountRole}'
-            - Sid: StepFunctionPermissions
+            - 
+              Sid: StepFunctionPermissions
               Effect: Allow
               Action:
                 - states:StartExecution
                 - states:ListExecutions
-                - states:DescribeExecution
-              Resource:
+              Resource: 
                 - !Ref MonitorBucketForLogs
+            - 
+              Sid: ExamineStepFunctionExecutionPermissions
+              Effect: Allow
+              Action:
+                - states:DescribeExecution
+              Resource: "*"
       Environment:
         Variables:
           LOG_ARCHIVE_ACCOUNT_ID: !Ref LogArchiveAccountId
@@ -237,7 +244,7 @@ Resources:
   AlarmLifecycleEventFunction:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: INFRA-LifecycleEventFunction-HIGH
+      AlarmName: INFRA-LifecycleEventFunction-MEDIUM
       ActionsEnabled: true
       OKActions: []
       AlarmActions: []
