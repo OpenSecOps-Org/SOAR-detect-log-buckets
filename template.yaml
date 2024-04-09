@@ -46,7 +46,7 @@ Globals:
   Function:
     CodeUri: functions
     Timeout: 30
-    Runtime: python3.11
+    Runtime: python3.12
 
 Resources:
   #-------------------------------------------------------------------------------

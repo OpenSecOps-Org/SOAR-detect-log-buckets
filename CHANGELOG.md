@@ -1,5 +1,9 @@
 # Change Log
 
+## v1.2.4
+    * Python v3.12.2.
+    * `.python-version` file to support `pyenv`.
+
 ## v1.2.3
     * Changed incident level to MEDIUM for the lifecycle lambda.
 
