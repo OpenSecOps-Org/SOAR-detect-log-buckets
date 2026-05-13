@@ -1,6 +1,6 @@
 # SOAR-detect-log-buckets
 
-[![Daily CVE scan](https://github.com/OpenSecOps-Org/SOAR-detect-log-buckets/actions/workflows/daily-scan.yml/badge.svg)](https://github.com/OpenSecOps-Org/SOAR-detect-log-buckets/actions/workflows/daily-scan.yml) [![OpenSSF Scorecard](https://github.com/OpenSecOps-Org/SOAR-detect-log-buckets/actions/workflows/scorecard.yml/badge.svg)](https://github.com/OpenSecOps-Org/SOAR-detect-log-buckets/actions/workflows/scorecard.yml)
+[![Daily CVE scan](https://github.com/OpenSecOps-Org/SOAR-detect-log-buckets/actions/workflows/daily-scan.yml/badge.svg)](https://github.com/OpenSecOps-Org/SOAR-detect-log-buckets/actions/workflows/daily-scan.yml) [![OpenSSF Scorecard](https://github.com/OpenSecOps-Org/SOAR-detect-log-buckets/actions/workflows/scorecard.yml/badge.svg)](https://github.com/OpenSecOps-Org/SOAR-detect-log-buckets/actions/workflows/scorecard.yml) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12827/badge)](https://www.bestpractices.dev/projects/12827)
 
 Whenever a bucket is created, we want to detect whether it contains log files
 from CloudFront or AWS Elastic Load Balancing. If so, we replicate the contents
