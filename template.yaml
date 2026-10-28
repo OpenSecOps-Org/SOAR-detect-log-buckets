@@ -47,8 +47,20 @@ Globals:
     CodeUri: functions
     Timeout: 30
     Runtime: python3.12
+    Layers:
+      - !Ref AwsErrorsLayer
 
 Resources:
+  # aws_errors.py (distributed by Installer/refresh): the named errors the state machine retries
+  AwsErrorsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      Description: Named errors for state machine retries (AWSTransientError)
+      ContentUri: functions/layers/aws_errors/
+      CompatibleRuntimes:
+        - python3.12
+      RetentionPolicy: Retain
+
   #-------------------------------------------------------------------------------
   #
   # Detecting bucket lifecycle events

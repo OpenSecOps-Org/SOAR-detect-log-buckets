@@ -1,5 +1,6 @@
 import os
 import boto3
+from aws_errors import transient_aws_errors
 
 CROSS_ACCOUNT_ROLE = os.environ['CROSS_ACCOUNT_ROLE']
 REPLICATION_ROLE_NAME = os.environ['REPLICATION_ROLE_NAME']
@@ -10,6 +11,7 @@ LOG_ARCHIVE_ACCOUNT_iD = os.environ['LOG_ARCHIVE_ACCOUNT_iD']
 sts_client = boto3.client('sts')
 
 
+@transient_aws_errors
 def lambda_handler(data, _context):
     region = data['region']
     account_id = data['account_id']
